@@ -1,17 +1,10 @@
 "use server";
 
+import { open } from 'sqlite'
+import sqlite3 from 'sqlite3';
 import { revalidatePath } from "next/cache";
-import postgres from "postgres";
 import { z } from "zod";
 
-let sql = postgres(process.env.DATABASE_URL || process.env.POSTGRES_URL!, {
-  ssl: "allow",
-});
-
-// CREATE TABLE todos (
-//   id SERIAL PRIMARY KEY,
-//   text TEXT NOT NULL
-// );
 
 export async function createTodo(
   prevState: {
@@ -31,12 +24,16 @@ export async function createTodo(
   }
 
   const data = parse.data;
-
+  const db = await open({
+    filename: './db.sqlite3',
+    driver: sqlite3.Database,
+  });
+  console.log(data.todo)
   try {
-    await sql`
+    await db.run(`
       INSERT INTO todos (text)
-      VALUES (${data.todo})
-    `;
+      VALUES ("${data.todo}")
+    `);
 
     revalidatePath("/");
     return { message: `Added todo ${data.todo}` };
@@ -59,12 +56,15 @@ export async function deleteTodo(
     id: formData.get("id"),
     todo: formData.get("todo"),
   });
-
   try {
-    await sql`
+    const db = await open({
+      filename: './db.sqlite3',
+      driver: sqlite3.Database,
+    });
+    await db.run(`
       DELETE FROM todos
       WHERE id = ${data.id};
-    `;
+    `);
 
     revalidatePath("/");
     return { message: `Deleted todo ${data.todo}` };
